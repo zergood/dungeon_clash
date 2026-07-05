@@ -1,0 +1,133 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dungeon-clash"
+version = "0.1.0"
+description = "Console-native ASCII dungeon crawler with strategy-as-code"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Dungeon Clash contributors" }]
+dependencies = [
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+cli = [
+    "typer>=0.12",
+    "rich>=13.7",
+    "textual>=0.60",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.100",
+    "import-linter>=2.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+dungeon = "dungeon_clash.cli.app:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["dungeon_clash"]
+
+# ── ruff ──────────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# Legacy single-file prototype kept for reference; superseded by the package.
+extend-exclude = ["prototype.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# We use typographic dashes (– —) in prose docstrings intentionally.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+# ── mypy ──────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["dungeon_clash"]
+
+[[tool.mypy.overrides]]
+module = ["dungeon_clash.cli.*"]
+disallow_untyped_decorators = false  # Typer decorators
+
+# ── pytest ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+asyncio_mode = "auto"
+
+[tool.coverage.report]
+# Coverage gate for the deterministic core is enforced in CI (see .github/workflows/ci.yml)
+exclude_lines = ["pragma: no cover", "raise NotImplementedError"]
+
+# ── import-linter: enforce the core/adapters boundary (TECH_STACK.md §0, §9, §10)
+[tool.importlinter]
+root_package = "dungeon_clash"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "core stays headless and framework-free"
+type = "forbidden"
+source_modules = ["dungeon_clash.core"]
+forbidden_modules = [
+    "dungeon_clash.adapters",
+    "dungeon_clash.cli",
+    "dungeon_clash.strategy",
+    "dungeon_clash.passive",
+    "dungeon_clash.active",
+    "dungeon_clash.service",
+    "rich",
+    "textual",
+    "typer",
+    "sqlite3",
+    "gymnasium",
+    "pettingzoo",
+    "fastapi",
+]
+
+[[tool.importlinter.contracts]]
+name = "content layer is pure data, independent of presentation"
+type = "forbidden"
+source_modules = ["dungeon_clash.content"]
+forbidden_modules = [
+    "dungeon_clash.adapters",
+    "dungeon_clash.cli",
+    "rich",
+    "textual",
+    "typer",
+]
+
+[[tool.importlinter.contracts]]
+name = "passive & active engines are pure logic, independent of storage and presentation"
+type = "forbidden"
+source_modules = ["dungeon_clash.passive", "dungeon_clash.active"]
+forbidden_modules = [
+    "dungeon_clash.adapters",
+    "dungeon_clash.cli",
+    "dungeon_clash.service",
+    "rich",
+    "textual",
+    "typer",
+    "sqlite3",
+]
+
+[[tool.importlinter.contracts]]
+name = "render adapter stays pure Rich (no Textual, storage, service, or CLI)"
+type = "forbidden"
+source_modules = ["dungeon_clash.adapters.render"]
+forbidden_modules = [
+    "dungeon_clash.adapters.persist",
+    "dungeon_clash.cli",
+    "dungeon_clash.service",
+    "textual",
+    "typer",
+    "sqlite3",
+]
