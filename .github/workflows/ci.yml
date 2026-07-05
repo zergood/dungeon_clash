@@ -18,26 +18,26 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+      - name: Create the virtual environment (matrix Python)
+        run: uv venv --python ${{ matrix.python-version }}
 
       - name: Install project
-        run: uv pip install --system -e '.[dev,cli]'
+        run: uv pip install -e '.[dev,cli]'
 
       - name: Ruff (lint + format check)
         run: |
-          ruff check .
-          ruff format --check .
+          uv run ruff check .
+          uv run ruff format --check .
 
       - name: Mypy (strict types)
-        run: mypy
+        run: uv run mypy
 
       - name: Import boundaries (core stays headless)
-        run: lint-imports
+        run: uv run lint-imports
 
       - name: Tests + coverage gate on the domain, persistence & render layers
         run: >-
-          pytest
+          uv run pytest
           --cov=dungeon_clash.core --cov=dungeon_clash.strategy
           --cov=dungeon_clash.passive --cov=dungeon_clash.active
           --cov=dungeon_clash.service --cov=dungeon_clash.adapters
