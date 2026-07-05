@@ -18,9 +18,11 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from dungeon_clash import service
 from dungeon_clash.adapters.persist import Store
+from dungeon_clash.adapters.render import render_log_line
 from dungeon_clash.passive import STRATEGIES, PassiveSession
 
 cli = typer.Typer(add_completion=False, help="Dungeon Clash — a terminal dungeon crawler.")
@@ -31,32 +33,9 @@ def _store() -> Store:
     return Store(service.default_db_path())
 
 
-def _format_event(kind: str, payload: dict[str, object]) -> str:
-    if kind == "attack_resolved":
-        guard = payload.get("defend_zone") or "—"
-        return (
-            f"{payload['attacker']} → {payload['defender']} "
-            f"[{payload['attack_zone']}] {payload['result']} "
-            f"{payload['damage']} dmg (guard {guard})"
-        )
-    if kind == "combat_defeated":
-        return f"{payload['winner']} defeats {payload['loser']} (turn {payload['turns']})"
-    if kind == "enemy_appeared":
-        return f"a {payload['name']} appears ({payload['hp']} HP)"
-    if kind == "hero_down":
-        return f"the hero falls and recovers (death #{payload['deaths']})"
-    if kind == "strategy_error":
-        return f"STRATEGY ERROR {payload['exc_type']}: {payload['message']} — turn skipped"
-    if kind == "invalid_action":
-        return f"INVALID ACTION: {payload['reason']} — turn skipped"
-    if kind == "fled":
-        return f"{payload['who']} flees"
-    return kind
-
-
 def _print_log_row(row: object) -> None:
-    detail = _format_event(row["kind"], json.loads(row["payload"]))  # type: ignore[index]
-    console.print(f"[dim]t{row['tick']:>4}[/]  {detail}")  # type: ignore[index]
+    detail = render_log_line(row["kind"], json.loads(row["payload"]))  # type: ignore[index]
+    console.print(Text.assemble((f"t{row['tick']:>4}  ", "dim"), detail))  # type: ignore[index]
 
 
 def _render_status(session: PassiveSession) -> None:
@@ -109,6 +88,19 @@ def status() -> None:
             console.print("\n[dim]recent:[/]")
             for row in last:
                 _print_log_row(row)
+
+
+@cli.command()
+def play() -> None:
+    """Take manual control of the current run (interactive TUI)."""
+    from dungeon_clash.cli.play import PlayApp  # lazy: only pull in Textual for play
+
+    with _store() as store:
+        session = service.catch_up(store, now=time.time())
+        if session is None:
+            console.print("No run yet. Start one with [bold]dungeon start[/].")
+            raise typer.Exit(code=1)
+        PlayApp(store, session).run()
 
 
 @cli.command()

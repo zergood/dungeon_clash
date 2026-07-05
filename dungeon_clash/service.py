@@ -13,6 +13,7 @@ from pathlib import Path
 
 from dungeon_clash.adapters.persist import LogRow, Store
 from dungeon_clash.content import load_enemies
+from dungeon_clash.content.schema import EnemyTemplate
 from dungeon_clash.core.events import AttackResolved, CombatDefeated
 from dungeon_clash.passive import (
     EnemyAppeared,
@@ -38,6 +39,11 @@ def default_db_path() -> Path:
     home = os.environ.get("DUNGEON_CLASH_HOME")
     base = Path(home) if home else Path.home() / ".local" / "share" / "dungeon_clash"
     return base / "save.db"
+
+
+def enemy_pool() -> list[EnemyTemplate]:
+    """The current pool of enemies to draw from (Phase 5 makes this per-floor)."""
+    return list(load_enemies().values())
 
 
 def _to_row(entry: LogEntry) -> LogRow:
@@ -105,3 +111,22 @@ def catch_up(
         snapshot=session.model_dump_json(),
     )
     return session
+
+
+def persist_turn(
+    store: Store, session: PassiveSession, entries: list[LogEntry], *, now: float
+) -> None:
+    """Persist one active-mode turn.
+
+    Wall-clock is reset to ``now`` so time the player spent at the keyboard is
+    consumed by play, not double-counted as passive simulation afterwards.
+    """
+    if entries:
+        store.append_log([_to_row(e) for e in entries])
+    store.save_session(
+        seed=session.seed,
+        strategy_name=session.strategy_name,
+        tick=session.tick,
+        last_checked_at=now,
+        snapshot=session.model_dump_json(),
+    )

@@ -7,9 +7,10 @@ for the engineering plan.
 
 ## Status
 
-**Phase 3** — persistence + passive mode + CLI (see IMPLEMENTATION_PLAN.md for the roadmap).
+**Phase 4** — active TUI + render adapter (see IMPLEMENTATION_PLAN.md for the roadmap).
 Done so far: deterministic combat core (1), strategy-as-code + sandbox (2),
-SQLite persistence, lazy passive catch-up, and the `dungeon` CLI (3).
+SQLite persistence + lazy passive catch-up + CLI (3), and an interactive
+Textual UI with seamless passive↔active switching (4).
 
 The architecture separates a **deterministic, headless simulation core** from all
 presentation, persistence, RL, and networking. The core is a pure function of
@@ -23,9 +24,10 @@ dungeon_clash/
   content/    # game data as validated TOML (enemies, …)
   strategy/   # strategy-as-code: intents, runner, sandbox, reference bots
   passive/    # autonomous lazy-catch-up simulation (no daemon)
-  adapters/   # persist (SQLite); render / rlenv come in later phases
-  service.py  # application service wiring passive ↔ storage ↔ clock
-  cli/        # the `dungeon` CLI (Typer + Rich)
+  active/     # manual player-driven turns (shares the same core + bookkeeping)
+  adapters/   # persist (SQLite) + render (Rich); rlenv comes in a later phase
+  service.py  # application service wiring passive/active ↔ storage ↔ clock
+  cli/        # the `dungeon` CLI (Typer + Rich) and the Textual play app
 ```
 
 ## Develop
@@ -44,11 +46,15 @@ uv run pytest                # unit + property + determinism + content tests
 
 ```bash
 uv run dungeon start --seed 5 --strategy cautious   # begin a passive run
+uv run dungeon play                                  # take manual control (TUI)
 # ...come back later...
 uv run dungeon status                               # lazily catches up to now
 uv run dungeon log --last 10                         # recent combat log
 uv run dungeon log --stats                           # aggregate statistics
 ```
+
+In `dungeon play` you pick an attack zone then a defend zone (H/T/L) each turn;
+`Q` hands control back to your strategy at the exact state you left.
 
 Passive mode never runs in the background: `status` deterministically simulates
 whatever happened since you last looked and appends it to the log. Nothing is

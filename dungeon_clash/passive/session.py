@@ -54,6 +54,33 @@ def new_session(seed: int, strategy_name: str, *, hero: Combatant | None = None)
     )
 
 
+def spawn_from(pool: Sequence[EnemyTemplate], rng: Rng) -> Enemy:
+    """Draw and roll a fresh enemy from a pool (deterministic via ``rng``)."""
+    return rng.choice(pool).spawn(rng)
+
+
+def resolve_defeats(
+    hero: Combatant, enemy: Enemy, kills: int, deaths: int, tick: int
+) -> tuple[Combatant, Enemy | None, int, int, list[LogEntry]]:
+    """Post-turn bookkeeping shared by passive and active modes.
+
+    ``enemy`` is the just-stepped (non-None) enemy. Counts a kill and/or a death,
+    recovers the hero (death penalties arrive in Phase 5), and clears the enemy
+    so a fresh one spawns next turn.
+    """
+    entries: list[LogEntry] = []
+    surviving: Enemy | None = enemy
+    if not enemy.alive:
+        kills += 1
+        surviving = None
+    if not hero.alive:
+        deaths += 1
+        hero = hero.model_copy(update={"hp": hero.max_hp})
+        surviving = None
+        entries.append(LogEntry(tick, HeroDown(deaths=deaths)))
+    return hero, surviving, kills, deaths, entries
+
+
 def advance(
     session: PassiveSession,
     to_tick: int,
@@ -83,7 +110,7 @@ def advance(
 
     while tick < to_tick:
         if enemy is None or not enemy.alive:
-            enemy = rng.choice(enemy_pool).spawn(rng)
+            enemy = spawn_from(enemy_pool, rng)
             log.append(LogEntry(tick, EnemyAppeared(name=enemy.name, hp=enemy.hp)))
 
         cstate = CombatState(hero=hero, enemy=enemy)
@@ -98,17 +125,11 @@ def advance(
         assert decision.action is not None
         cstate, events = step(cstate, decision.action, rng)
         log.extend(LogEntry(tick, ev) for ev in events)
-        hero, enemy = cstate.hero, cstate.enemy
 
-        if not enemy.alive:
-            kills += 1
-            enemy = None
-        if not hero.alive:
-            deaths += 1
-            hero = hero.model_copy(update={"hp": hero.max_hp})  # recover (penalties = Phase 5)
-            enemy = None
-            log.append(LogEntry(tick, HeroDown(deaths=deaths)))
-
+        hero, enemy, kills, deaths, extra = resolve_defeats(
+            cstate.hero, cstate.enemy, kills, deaths, tick
+        )
+        log.extend(extra)
         tick += 1
 
     new = session.model_copy(
