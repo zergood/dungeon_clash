@@ -58,6 +58,8 @@ class Enemy(Combatant):
 
     template_id: str
     bias: tuple[Zone, ...] = Field(min_length=1)
+    #: Stress inflicted on the hero per landed hit (GDD §8.2); 0 for most foes.
+    stress_attack: int = Field(default=0, ge=0)
 
 
 class CombatAction(_Frozen):
@@ -79,6 +81,8 @@ class CombatState(_Frozen):
     hero: Combatant
     enemy: Enemy
     turn: int = 1
+    #: The hero's stress (0–100), carried in and out of the fight (GDD §8).
+    stress: int = 0
     over: bool = False
     #: ``"hero"`` or ``"enemy"`` once ``over`` is True, else ``None``.
     winner: str | None = None

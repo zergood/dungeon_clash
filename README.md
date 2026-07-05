@@ -7,10 +7,11 @@ for the engineering plan.
 
 ## Status
 
-**Phase 4** — active TUI + render adapter (see IMPLEMENTATION_PLAN.md for the roadmap).
+**Phase 5** — full run structure (see IMPLEMENTATION_PLAN.md for the roadmap).
 Done so far: deterministic combat core (1), strategy-as-code + sandbox (2),
-SQLite persistence + lazy passive catch-up + CLI (3), and an interactive
-Textual UI with seamless passive↔active switching (4).
+SQLite persistence + lazy passive catch-up + CLI (3), interactive Textual UI
+with seamless passive↔active switching (4), and floors/rooms/stress/resources
+with push-your-luck extraction (5).
 
 The architecture separates a **deterministic, headless simulation core** from all
 presentation, persistence, RL, and networking. The core is a pure function of
@@ -25,6 +26,7 @@ dungeon_clash/
   strategy/   # strategy-as-code: intents, runner, sandbox, reference bots
   passive/    # autonomous lazy-catch-up simulation (no daemon)
   active/     # manual player-driven turns (shares the same core + bookkeeping)
+  run/        # floors, rooms, resources, stress effects, push-your-luck
   adapters/   # persist (SQLite) + render (Rich); rlenv comes in a later phase
   service.py  # application service wiring passive/active ↔ storage ↔ clock
   cli/        # the `dungeon` CLI (Typer + Rich) and the Textual play app

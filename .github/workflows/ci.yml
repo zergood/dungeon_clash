@@ -40,5 +40,6 @@ jobs:
           uv run pytest
           --cov=dungeon_clash.core --cov=dungeon_clash.strategy
           --cov=dungeon_clash.passive --cov=dungeon_clash.active
-          --cov=dungeon_clash.service --cov=dungeon_clash.adapters
+          --cov=dungeon_clash.run --cov=dungeon_clash.service
+          --cov=dungeon_clash.adapters
           --cov-report=term-missing --cov-fail-under=90

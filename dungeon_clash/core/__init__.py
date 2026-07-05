@@ -8,9 +8,10 @@ simulation, RL environments, and MMO replay anti-cheat.
 """
 
 from dungeon_clash.core.combat import step
-from dungeon_clash.core.events import AttackResolved, CombatDefeated, Event
+from dungeon_clash.core.events import AttackResolved, CombatDefeated, Event, StressChanged
 from dungeon_clash.core.models import CombatAction, Combatant, CombatState, Enemy
 from dungeon_clash.core.rng import Rng
+from dungeon_clash.core.stress import StressState, is_breakdown, stress_state
 from dungeon_clash.core.zones import Zone
 
 __all__ = [
@@ -22,6 +23,10 @@ __all__ = [
     "Enemy",
     "Event",
     "Rng",
+    "StressChanged",
+    "StressState",
     "Zone",
+    "is_breakdown",
     "step",
+    "stress_state",
 ]

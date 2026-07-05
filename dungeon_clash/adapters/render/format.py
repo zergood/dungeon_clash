@@ -84,6 +84,9 @@ def render_log_line(kind: str, payload: dict[str, object]) -> Text:
         return Text(f"a {payload['name']} appears ({payload['hp']} HP)", style="cyan")
     if kind == "hero_down":
         return Text(f"the hero falls and recovers (death #{payload['deaths']})", style="red")
+    if kind == "stress_changed":
+        arrow = "↓" if str(payload["delta"]).startswith("-") else "↑"
+        return Text(f"stress {arrow} {payload['stress']} ({payload['state']})", style="magenta")
     if kind == "strategy_error":
         return Text(
             f"STRATEGY ERROR {payload['exc_type']}: {payload['message']} — turn skipped",
@@ -93,6 +96,26 @@ def render_log_line(kind: str, payload: dict[str, object]) -> Text:
         return Text(f"INVALID ACTION: {payload['reason']} — turn skipped", style="red")
     if kind == "fled":
         return Text(f"{payload['who']} flees", style="italic")
+    if kind == "room_entered":
+        return Text(f"— floor {payload['floor']} · {payload['room_type']} room", style="dim")
+    if kind == "rest_taken":
+        return Text(
+            f"rest: stress {payload['stress_before']}→{payload['stress_after']} "
+            f"(−{payload['cost']} gold)",
+            style="green",
+        )
+    if kind == "looted":
+        return Text(f"looted {payload['gold']} gold", style="yellow")
+    if kind == "floor_cleared":
+        return Text(f"floor {payload['floor']} cleared", style="bold cyan")
+    if kind == "extracted":
+        return Text(
+            f"extracted from floor {payload['floor']} — resources banked", style="bold green"
+        )
+    if kind == "breakdown":
+        return Text(f"BREAKDOWN — fled, lost {payload['gold_lost']} gold", style="bold red")
+    if kind == "run_ended":
+        return Text(f"run ended ({payload['reason']}) on floor {payload['floor']}", style="bold")
     return Text(kind)
 
 

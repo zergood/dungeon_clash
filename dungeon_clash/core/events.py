@@ -51,3 +51,12 @@ class CombatDefeated(Event):
     loser: str
     winner: str
     turns: int
+
+
+class StressChanged(Event):
+    """The hero's stress moved, possibly crossing a threshold (GDD §8)."""
+
+    kind: Literal["stress_changed"] = "stress_changed"
+    stress: int
+    delta: int
+    state: str

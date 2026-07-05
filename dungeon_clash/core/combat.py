@@ -8,13 +8,15 @@ the passed-in :class:`Rng`.
 Determinism contract: for a fixed seed, the RNG is consumed in a fixed order
 every turn:
 
+    0. stress action mutation  (only when Panicking → 1 draw, or Breaking → 2)
     1. enemy attack-zone choice
     2. enemy defend-zone choice
     3. hero's strike hit-roll  (only if the hero attacks this turn)
     4. enemy's strike hit-roll
 
-Changing this order changes replay hashes, so it is part of the public contract
-(and is pinned by the determinism tests).
+At Calm stress (the default) step 0 draws nothing, so stress-free replays are
+unchanged. Changing this order changes replay hashes, so it is part of the
+public contract (and is pinned by the determinism tests).
 
 Damage (GDD §7.2), all integer / basis points::
 
@@ -29,10 +31,39 @@ is possible — and counts as a hero loss.
 
 from __future__ import annotations
 
-from dungeon_clash.core.events import AttackResolved, AttackResult, CombatDefeated, Event
+from dungeon_clash.core.events import (
+    AttackResolved,
+    AttackResult,
+    CombatDefeated,
+    Event,
+    StressChanged,
+)
 from dungeon_clash.core.models import ONE_X_BP, CombatAction, Combatant, CombatState, Enemy
 from dungeon_clash.core.rng import Rng
+from dungeon_clash.core.stress import (
+    ONE_BLOW_RELIEF,
+    RATTLED_HEAD_PENALTY_BP,
+    StressState,
+    clamp_stress,
+    stress_state,
+)
 from dungeon_clash.core.zones import Zone, base_damage, hit_chance_bp
+
+_ALL_ZONES = tuple(Zone)
+
+
+def _stressed_action(action: CombatAction, state: StressState, rng: Rng) -> CombatAction:
+    """Apply the stress state's effect on the hero's chosen action (GDD §8.1).
+
+    Panicking randomly shifts the guard; Breaking ignores the strategy entirely
+    and acts at random. Calm/Rattled leave the action untouched (Rattled's
+    penalty is applied to the hit roll instead).
+    """
+    if state is StressState.BREAKING:
+        return CombatAction(attack=rng.choice(_ALL_ZONES), defend=rng.choice(_ALL_ZONES))
+    if state is StressState.PANICKING:
+        return action.model_copy(update={"defend": rng.choice(_ALL_ZONES)})
+    return action
 
 
 def resolve_strike(
@@ -41,14 +72,16 @@ def resolve_strike(
     atk_bp: int,
     block_bp: int,
     rng: Rng,
+    hit_mod_bp: int = 0,
 ) -> tuple[int, AttackResult]:
     """Resolve a single strike into ``(damage, result)``.
 
     Pure integer math; the only randomness is the hit-chance roll. A
     ``defend_zone`` of ``None`` means the target guards nothing, so the hit can
-    never be blocked.
+    never be blocked. ``hit_mod_bp`` adjusts the hit chance (e.g. the Rattled
+    stress penalty on HEAD attacks).
     """
-    if not rng.chance(hit_chance_bp(attack_zone)):
+    if not rng.chance(hit_chance_bp(attack_zone) + hit_mod_bp):
         return 0, AttackResult.MISS
 
     damage = base_damage(attack_zone) * atk_bp // ONE_X_BP
@@ -79,6 +112,10 @@ def step(state: CombatState, action: CombatAction, rng: Rng) -> tuple[CombatStat
 
     hero: Combatant = state.hero
     enemy: Enemy = state.enemy
+    sstate = stress_state(state.stress)
+
+    # 0: stress may override the hero's action before anything is committed.
+    action = _stressed_action(action, sstate, rng)
 
     # 1–2: enemy commits its action for the turn.
     enemy_attack, enemy_defend = choose_enemy_action(enemy, rng)
@@ -87,8 +124,14 @@ def step(state: CombatState, action: CombatAction, rng: Rng) -> tuple[CombatStat
     hero_damage = 0
     hero_result: AttackResult | None = None
     if action.attack is not None:
+        # Rattled costs 10% hit chance on HEAD (GDD §8.1).
+        hit_mod = (
+            -RATTLED_HEAD_PENALTY_BP
+            if sstate is StressState.RATTLED and action.attack is Zone.HEAD
+            else 0
+        )
         hero_damage, hero_result = resolve_strike(
-            action.attack, enemy_defend, hero.atk_bp, enemy.block_bp, rng
+            action.attack, enemy_defend, hero.atk_bp, enemy.block_bp, rng, hit_mod
         )
     # 4: enemy strikes hero's guard.
     enemy_damage, enemy_result = resolve_strike(
@@ -98,6 +141,14 @@ def step(state: CombatState, action: CombatAction, rng: Rng) -> tuple[CombatStat
     # Both hits land against start-of-turn HP (simultaneous resolution).
     new_enemy = enemy.with_damage(hero_damage)
     new_hero = hero.with_damage(enemy_damage)
+
+    # Stress: a terrifying enemy's landed hit raises it; a one-blow kill relieves it.
+    new_stress = state.stress
+    if enemy.stress_attack and enemy_result in (AttackResult.HIT, AttackResult.BLOCKED):
+        new_stress += enemy.stress_attack
+    if new_enemy.hp == 0 and enemy.hp == enemy.max_hp:
+        new_stress -= ONE_BLOW_RELIEF
+    new_stress = clamp_stress(new_stress)
 
     events: list[Event] = []
     if action.attack is not None and hero_result is not None:
@@ -124,6 +175,15 @@ def step(state: CombatState, action: CombatAction, rng: Rng) -> tuple[CombatStat
         )
     )
 
+    if new_stress != state.stress:
+        events.append(
+            StressChanged(
+                stress=new_stress,
+                delta=new_stress - state.stress,
+                state=stress_state(new_stress).value,
+            )
+        )
+
     hero_dead = not new_hero.alive
     enemy_dead = not new_enemy.alive
     over = hero_dead or enemy_dead
@@ -139,6 +199,7 @@ def step(state: CombatState, action: CombatAction, rng: Rng) -> tuple[CombatStat
             "hero": new_hero,
             "enemy": new_enemy,
             "turn": state.turn + 1,
+            "stress": new_stress,
             "over": over,
             "winner": winner,
         }

@@ -28,6 +28,8 @@ class EnemyTemplate(BaseModel):
     #: Block fraction in basis points (5_500 == 55%).
     block_bp: int = Field(ge=0, le=10_000)
     bias: tuple[Zone, ...] = Field(min_length=1)
+    #: Stress inflicted on the hero per landed hit (GDD §8.2); 0 for most foes.
+    stress_attack: int = Field(default=0, ge=0)
 
     def model_post_init(self, _context: object) -> None:
         if self.hp_max < self.hp_min:
@@ -49,4 +51,5 @@ class EnemyTemplate(BaseModel):
             atk_bp=self.atk_bp,
             block_bp=self.block_bp,
             bias=self.bias,
+            stress_attack=self.stress_attack,
         )
