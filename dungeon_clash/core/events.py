@@ -37,7 +37,8 @@ class AttackResolved(Event):
     attacker: str
     defender: str
     attack_zone: Zone
-    defend_zone: Zone
+    #: The zone the defender guarded, or ``None`` if they guarded nothing.
+    defend_zone: Zone | None
     result: AttackResult
     damage: int
     defender_hp: int

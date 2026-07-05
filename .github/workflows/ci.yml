@@ -35,5 +35,7 @@ jobs:
       - name: Import boundaries (core stays headless)
         run: lint-imports
 
-      - name: Tests + coverage gate on the core
-        run: pytest --cov=dungeon_clash.core --cov-report=term-missing --cov-fail-under=90
+      - name: Tests + coverage gate on core & strategy
+        run: >-
+          pytest --cov=dungeon_clash.core --cov=dungeon_clash.strategy
+          --cov-report=term-missing --cov-fail-under=90

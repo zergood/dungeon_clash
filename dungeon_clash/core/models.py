@@ -61,10 +61,16 @@ class Enemy(Combatant):
 
 
 class CombatAction(_Frozen):
-    """One combat turn's decision: where to strike, where to guard."""
+    """One combat turn's decision: where to strike, where to guard.
 
-    attack: Zone
-    defend: Zone
+    Both fields are optional. ``attack=None`` means the hero does not strike
+    this turn (used for a skipped turn after a strategy error — GDD §4.2 — and,
+    later, magic-only turns). ``defend=None`` means no zone is guarded, so no
+    incoming hit can be blocked.
+    """
+
+    attack: Zone | None = None
+    defend: Zone | None = None
 
 
 class CombatState(_Frozen):

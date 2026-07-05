@@ -10,7 +10,7 @@ every turn:
 
     1. enemy attack-zone choice
     2. enemy defend-zone choice
-    3. hero's strike hit-roll
+    3. hero's strike hit-roll  (only if the hero attacks this turn)
     4. enemy's strike hit-roll
 
 Changing this order changes replay hashes, so it is part of the public contract
@@ -37,14 +37,16 @@ from dungeon_clash.core.zones import Zone, base_damage, hit_chance_bp
 
 def resolve_strike(
     attack_zone: Zone,
-    defend_zone: Zone,
+    defend_zone: Zone | None,
     atk_bp: int,
     block_bp: int,
     rng: Rng,
 ) -> tuple[int, AttackResult]:
     """Resolve a single strike into ``(damage, result)``.
 
-    Pure integer math; the only randomness is the hit-chance roll.
+    Pure integer math; the only randomness is the hit-chance roll. A
+    ``defend_zone`` of ``None`` means the target guards nothing, so the hit can
+    never be blocked.
     """
     if not rng.chance(hit_chance_bp(attack_zone)):
         return 0, AttackResult.MISS
@@ -81,10 +83,13 @@ def step(state: CombatState, action: CombatAction, rng: Rng) -> tuple[CombatStat
     # 1–2: enemy commits its action for the turn.
     enemy_attack, enemy_defend = choose_enemy_action(enemy, rng)
 
-    # 3: hero strikes enemy's guard.
-    hero_damage, hero_result = resolve_strike(
-        action.attack, enemy_defend, hero.atk_bp, enemy.block_bp, rng
-    )
+    # 3: hero strikes enemy's guard (only if the hero attacks this turn).
+    hero_damage = 0
+    hero_result: AttackResult | None = None
+    if action.attack is not None:
+        hero_damage, hero_result = resolve_strike(
+            action.attack, enemy_defend, hero.atk_bp, enemy.block_bp, rng
+        )
     # 4: enemy strikes hero's guard.
     enemy_damage, enemy_result = resolve_strike(
         enemy_attack, action.defend, enemy.atk_bp, hero.block_bp, rng
@@ -94,16 +99,20 @@ def step(state: CombatState, action: CombatAction, rng: Rng) -> tuple[CombatStat
     new_enemy = enemy.with_damage(hero_damage)
     new_hero = hero.with_damage(enemy_damage)
 
-    events: list[Event] = [
-        AttackResolved(
-            attacker=hero.name,
-            defender=enemy.name,
-            attack_zone=action.attack,
-            defend_zone=enemy_defend,
-            result=hero_result,
-            damage=hero_damage,
-            defender_hp=new_enemy.hp,
-        ),
+    events: list[Event] = []
+    if action.attack is not None and hero_result is not None:
+        events.append(
+            AttackResolved(
+                attacker=hero.name,
+                defender=enemy.name,
+                attack_zone=action.attack,
+                defend_zone=enemy_defend,
+                result=hero_result,
+                damage=hero_damage,
+                defender_hp=new_enemy.hp,
+            )
+        )
+    events.append(
         AttackResolved(
             attacker=enemy.name,
             defender=hero.name,
@@ -112,8 +121,8 @@ def step(state: CombatState, action: CombatAction, rng: Rng) -> tuple[CombatStat
             result=enemy_result,
             damage=enemy_damage,
             defender_hp=new_hero.hp,
-        ),
-    ]
+        )
+    )
 
     hero_dead = not new_hero.alive
     enemy_dead = not new_enemy.alive
