@@ -35,7 +35,10 @@ jobs:
       - name: Import boundaries (core stays headless)
         run: lint-imports
 
-      - name: Tests + coverage gate on core & strategy
+      - name: Tests + coverage gate on the domain & persistence layers
         run: >-
-          pytest --cov=dungeon_clash.core --cov=dungeon_clash.strategy
+          pytest
+          --cov=dungeon_clash.core --cov=dungeon_clash.strategy
+          --cov=dungeon_clash.passive --cov=dungeon_clash.service
+          --cov=dungeon_clash.adapters.persist
           --cov-report=term-missing --cov-fail-under=90

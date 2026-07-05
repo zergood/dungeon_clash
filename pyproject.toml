@@ -78,6 +78,8 @@ forbidden_modules = [
     "dungeon_clash.adapters",
     "dungeon_clash.cli",
     "dungeon_clash.strategy",
+    "dungeon_clash.passive",
+    "dungeon_clash.service",
     "rich",
     "textual",
     "typer",
@@ -97,4 +99,17 @@ forbidden_modules = [
     "rich",
     "textual",
     "typer",
+]
+
+[[tool.importlinter.contracts]]
+name = "passive engine is pure logic, independent of storage and presentation"
+type = "forbidden"
+source_modules = ["dungeon_clash.passive"]
+forbidden_modules = [
+    "dungeon_clash.adapters",
+    "dungeon_clash.cli",
+    "rich",
+    "textual",
+    "typer",
+    "sqlite3",
 ]

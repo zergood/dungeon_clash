@@ -14,12 +14,17 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from typing import TypeVar
+from typing import TypeVar, cast
 
 T = TypeVar("T")
 
 #: Probabilities are expressed in basis points: 10_000 bp == 100%.
 BASIS_POINTS = 10_000
+
+#: The Mersenne-Twister state (``random.getstate()``): version, internal state,
+#: and the cached gaussian. JSON- and SQLite-friendly, so a run can be snapshot
+#: and resumed exactly where it left off.
+RngState = tuple[int, tuple[int, ...], float | None]
 
 
 class Rng:
@@ -54,10 +59,10 @@ class Rng:
             raise ValueError("cannot choose from an empty sequence")
         return options[self._r.randrange(len(options))]
 
-    def getstate(self) -> tuple[object, ...]:
-        """Opaque generator state, for snapshotting a run mid-flight."""
-        return self._r.getstate()
+    def getstate(self) -> RngState:
+        """Serializable generator state, for snapshotting a run mid-flight."""
+        return cast("RngState", self._r.getstate())
 
-    def setstate(self, state: tuple[object, ...]) -> None:
+    def setstate(self, state: RngState) -> None:
         """Restore generator state produced by :meth:`getstate`."""
         self._r.setstate(state)
