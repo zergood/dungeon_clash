@@ -1,0 +1,29 @@
+# Enemy definitions. Multipliers are in basis points (10_000 == 1.00x / 100%).
+# See dungeon_clash/content/schema.py for the schema and GDD §12.2 for design.
+
+[[enemy]]
+template_id = "goblin_scout"
+name = "Goblin Scout"
+hp_min = 38
+hp_max = 55
+atk_bp = 7500      # 0.75x
+block_bp = 4000    # 40%
+bias = ["L", "L", "T"]
+
+[[enemy]]
+template_id = "skeleton_warrior"
+name = "Skeleton Warrior"
+hp_min = 55
+hp_max = 80
+atk_bp = 9000      # 0.90x
+block_bp = 4500    # 45%
+bias = ["T", "T", "H"]
+
+[[enemy]]
+template_id = "orc_warrior"
+name = "Orc Warrior"
+hp_min = 85
+hp_max = 120
+atk_bp = 10500     # 1.05x
+block_bp = 5500    # 55%
+bias = ["H", "H", "T"]

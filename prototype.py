@@ -11,38 +11,52 @@ Controls: type H / T / L and press ENTER each turn.
 No external dependencies required.
 """
 
-import random
-import time
 import os
+import random
 import sys
+import time
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def clear():
     os.system("cls" if os.name == "nt" else "clear")
 
+
 def wait(t=0.8):
     time.sleep(t)
 
+
 def pause(msg="  [ Press ENTER to continue ] "):
     input(msg)
+
 
 def hpbar(hp, max_hp, width=22):
     hp = max(0, hp)
     filled = int((hp / max_hp) * width)
     return "[" + "█" * filled + "░" * (width - filled) + f"] {hp:>3}/{max_hp}"
 
+
 # ── zones ─────────────────────────────────────────────────────────────────────
 #  key → (display name, base damage, hit probability)
 ZONES = {
-    "H": ("HEAD",  22, 0.55),
+    "H": ("HEAD", 22, 0.55),
     "T": ("TORSO", 14, 0.75),
-    "L": ("LEGS",   8, 0.92),
+    "L": ("LEGS", 8, 0.92),
 }
 
-def zname(k):  return ZONES[k][0]
-def zdmg(k):   return ZONES[k][1]
-def zhit(k):   return ZONES[k][2]
+
+def zname(k):
+    return ZONES[k][0]
+
+
+def zdmg(k):
+    return ZONES[k][1]
+
+
+def zhit(k):
+    return ZONES[k][2]
+
 
 # ── ASCII art ─────────────────────────────────────────────────────────────────
 
@@ -117,40 +131,42 @@ ART = {
     ],
 }
 
+
 def print_art(name, indent=6):
     lines = ART.get(name, ["  ???  "])
     for line in lines:
         print(" " * indent + line)
 
+
 # ── classes ───────────────────────────────────────────────────────────────────
 
 CLASSES = {
     "1": {
-        "name":   "Warrior",
-        "hp":     100,
-        "atk":    1.10,   # damage multiplier
-        "blk":    0.65,   # fraction blocked when guarding correctly
-        "dodge":  0.00,
-        "desc":   "100 HP  |  +10% dmg  |  65% block",
-        "quote":  '"Steel and shield!"',
+        "name": "Warrior",
+        "hp": 100,
+        "atk": 1.10,  # damage multiplier
+        "blk": 0.65,  # fraction blocked when guarding correctly
+        "dodge": 0.00,
+        "desc": "100 HP  |  +10% dmg  |  65% block",
+        "quote": '"Steel and shield!"',
     },
     "2": {
-        "name":   "Rogue",
-        "hp":     75,
-        "atk":    1.00,
-        "blk":    0.45,
-        "dodge":  0.22,   # 22% chance to dodge any hit entirely
-        "desc":   " 75 HP  |  22% dodge |  45% block",
-        "quote":  '"You\'ll never see me."',
+        "name": "Rogue",
+        "hp": 75,
+        "atk": 1.00,
+        "blk": 0.45,
+        "dodge": 0.22,  # 22% chance to dodge any hit entirely
+        "desc": " 75 HP  |  22% dodge |  45% block",
+        "quote": '"You\'ll never see me."',
     },
     "3": {
-        "name":   "Mage",
-        "hp":     60,
-        "atk":    1.45,
-        "blk":    0.35,
-        "dodge":  0.00,
-        "desc":   " 60 HP  |  +45% dmg  |  35% block",
-        "quote":  '"Arcane power flows through me."',
+        "name": "Mage",
+        "hp": 60,
+        "atk": 1.45,
+        "blk": 0.35,
+        "dodge": 0.00,
+        "desc": " 60 HP  |  +45% dmg  |  35% block",
+        "quote": '"Arcane power flows through me."',
     },
 }
 
@@ -158,68 +174,71 @@ CLASSES = {
 
 ENEMY_TEMPLATES = [
     {
-        "name":    "Goblin",
-        "hp":      42,
-        "atk":     0.75,
-        "blk":     0.40,
-        "bias":    ["L", "L", "T"],   # prefers low sweeps
-        "intro":   "A sneaky Goblin drops from the ceiling!",
-        "xp":      30,
-        "loot":    ["Gold Coins", "Rusty Dagger", "Stolen Bread"],
+        "name": "Goblin",
+        "hp": 42,
+        "atk": 0.75,
+        "blk": 0.40,
+        "bias": ["L", "L", "T"],  # prefers low sweeps
+        "intro": "A sneaky Goblin drops from the ceiling!",
+        "xp": 30,
+        "loot": ["Gold Coins", "Rusty Dagger", "Stolen Bread"],
     },
     {
-        "name":    "Skeleton",
-        "hp":      58,
-        "atk":     0.90,
-        "blk":     0.45,
-        "bias":    ["T", "T", "H"],
-        "intro":   "Bones rattle — a Skeleton rises from the floor!",
-        "xp":      45,
-        "loot":    ["Bone Fragment", "Bronze Coin", "Old Scroll"],
+        "name": "Skeleton",
+        "hp": 58,
+        "atk": 0.90,
+        "blk": 0.45,
+        "bias": ["T", "T", "H"],
+        "intro": "Bones rattle — a Skeleton rises from the floor!",
+        "xp": 45,
+        "loot": ["Bone Fragment", "Bronze Coin", "Old Scroll"],
     },
     {
-        "name":    "Orc",
-        "hp":      85,
-        "atk":     1.05,
-        "blk":     0.55,
-        "bias":    ["H", "H", "T"],   # aggressive headhunter
-        "intro":   "An Orc warrior charges with a battle cry!",
-        "xp":      70,
-        "loot":    ["Crude Axe", "Leather Strip", "Orc Fang"],
+        "name": "Orc",
+        "hp": 85,
+        "atk": 1.05,
+        "blk": 0.55,
+        "bias": ["H", "H", "T"],  # aggressive headhunter
+        "intro": "An Orc warrior charges with a battle cry!",
+        "xp": 70,
+        "loot": ["Crude Axe", "Leather Strip", "Orc Fang"],
     },
     {
-        "name":    "Dark Knight",
-        "hp":      110,
-        "atk":     1.20,
-        "blk":     0.65,
-        "bias":    ["H", "T", "H"],
-        "intro":   "A Dark Knight steps from the shadows. Eyes gleaming red.",
-        "xp":      100,
-        "loot":    ["Dark Iron Shard", "Knight's Crest", "Cursed Coin"],
+        "name": "Dark Knight",
+        "hp": 110,
+        "atk": 1.20,
+        "blk": 0.65,
+        "bias": ["H", "T", "H"],
+        "intro": "A Dark Knight steps from the shadows. Eyes gleaming red.",
+        "xp": 100,
+        "loot": ["Dark Iron Shard", "Knight's Crest", "Cursed Coin"],
     },
     {
-        "name":    "Dragon",
-        "hp":      180,
-        "atk":     1.50,
-        "blk":     0.70,
-        "bias":    ["H", "T", "L"],   # balanced, unpredictable
-        "intro":   "THE DRAGON AWAKENS.  Its roar shakes the dungeon walls!!!",
-        "xp":      250,
-        "loot":    ["Dragon Scale", "Legendary Gem", "Ancient Gold"],
-        "boss":    True,
+        "name": "Dragon",
+        "hp": 180,
+        "atk": 1.50,
+        "blk": 0.70,
+        "bias": ["H", "T", "L"],  # balanced, unpredictable
+        "intro": "THE DRAGON AWAKENS.  Its roar shakes the dungeon walls!!!",
+        "xp": 250,
+        "loot": ["Dragon Scale", "Legendary Gem", "Ancient Gold"],
+        "boss": True,
     },
 ]
+
 
 def spawn_enemy(template, floor):
     """Return a fresh enemy dict scaled to current floor."""
     scale = 1.0 + (floor - 1) * 0.18
     e = dict(template)
-    e["hp"]     = int(template["hp"] * scale)
+    e["hp"] = int(template["hp"] * scale)
     e["max_hp"] = e["hp"]
-    e["atk"]    = round(template["atk"] * scale, 3)
+    e["atk"] = round(template["atk"] * scale, 3)
     return e
 
+
 # ── combat engine ─────────────────────────────────────────────────────────────
+
 
 def resolve(atk_zone, def_zone, atk_mult, blk_mult, dodge=0.0):
     """
@@ -242,33 +261,38 @@ def resolve(atk_zone, def_zone, atk_mult, blk_mult, dodge=0.0):
 
     return dmg, "hit"
 
+
 def enemy_ai(enemy):
     """Simple AI: pick attack from bias pool, defense randomly."""
     atk = random.choice(enemy["bias"])
     dfn = random.choice(["H", "T", "L"])
     return atk, dfn
 
+
 # ── display helpers ───────────────────────────────────────────────────────────
 
-DIVIDER  = "  " + "═" * 54
+DIVIDER = "  " + "═" * 54
 THIN_DIV = "  " + "─" * 54
+
 
 def print_combat_header(gs, enemy):
     clear()
     print()
     print(DIVIDER)
-    print(f"  ⚔  Floor {gs['floor']}  │  {gs['name']} the {gs['cls']['name']}"
-          f"  │  Lvl {gs['level']}  │  XP {gs['xp']}/{xp_needed(gs['level'])}")
+    print(
+        f"  ⚔  Floor {gs['floor']}  │  {gs['name']} the {gs['cls']['name']}"
+        f"  │  Lvl {gs['level']}  │  XP {gs['xp']}/{xp_needed(gs['level'])}"
+    )
     print(DIVIDER)
     print()
 
     col_w = 26
     # Hero side
-    hero_lines  = ART.get(gs["cls"]["name"], [])
+    hero_lines = ART.get(gs["cls"]["name"], [])
     enemy_lines = ART.get(enemy["name"], [])
 
     max_art = max(len(hero_lines), len(enemy_lines))
-    hero_lines  = hero_lines  + [""] * (max_art - len(hero_lines))
+    hero_lines = hero_lines + [""] * (max_art - len(hero_lines))
     enemy_lines = enemy_lines + [""] * (max_art - len(enemy_lines))
 
     for h, e in zip(hero_lines, enemy_lines):
@@ -279,6 +303,7 @@ def print_combat_header(gs, enemy):
     print(f"  {hpbar(gs['hp'], gs['max_hp']):^{col_w}}   {hpbar(enemy['hp'], enemy['max_hp'])}")
     print()
 
+
 def print_zone_help():
     print(THIN_DIV)
     print("  ZONE     DAMAGE   HIT CHANCE")
@@ -287,6 +312,7 @@ def print_zone_help():
     print("  [L] Legs     8      92%    ← safe chip damage")
     print(THIN_DIV)
 
+
 def ask_zone(prompt):
     while True:
         v = input(prompt).strip().upper()[:1]
@@ -294,7 +320,9 @@ def ask_zone(prompt):
             return v
         print("  → Enter H, T, or L")
 
+
 # ── main combat loop ──────────────────────────────────────────────────────────
+
 
 def do_combat(gs, enemy):
     print()
@@ -326,8 +354,7 @@ def do_combat(gs, enemy):
         if rtype == "miss":
             print(f"  ✗  You swing at {zname(p_atk)}... MISS!")
         elif rtype == "blocked":
-            print(f"  ⚔  You hit {zname(p_atk)} — {enemy['name']} BLOCKS! "
-                  f"Only {dmg} damage.")
+            print(f"  ⚔  You hit {zname(p_atk)} — {enemy['name']} BLOCKS! Only {dmg} damage.")
         else:
             print(f"  ⚔  UNGUARDED! You strike {zname(p_atk)} for {dmg} damage!")
         enemy["hp"] = max(0, enemy["hp"] - dmg)
@@ -335,19 +362,16 @@ def do_combat(gs, enemy):
         print()
 
         # --- enemy strikes player ---
-        print(f"  {enemy['name']} attacks your {zname(e_atk)}"
-              f"  (you guard {zname(p_def)})")
-        dmg2, rtype2 = resolve(e_atk, p_def, enemy["atk"],
-                               gs["cls"]["blk"], gs["cls"]["dodge"])
+        print(f"  {enemy['name']} attacks your {zname(e_atk)}  (you guard {zname(p_def)})")
+        dmg2, rtype2 = resolve(e_atk, p_def, enemy["atk"], gs["cls"]["blk"], gs["cls"]["dodge"])
         if rtype2 == "dodge":
-            print(f"  ✦  You DODGE the attack entirely!")
+            print("  ✦  You DODGE the attack entirely!")
         elif rtype2 == "miss":
             print(f"  ✗  {enemy['name']} misses!")
         elif rtype2 == "blocked":
             print(f"  🛡  BLOCKED! Only {dmg2} damage gets through.")
         else:
-            print(f"  💥  UNGUARDED! {enemy['name']} hits your {zname(e_atk)}"
-                  f" for {dmg2} damage!")
+            print(f"  💥  UNGUARDED! {enemy['name']} hits your {zname(e_atk)} for {dmg2} damage!")
         gs["hp"] = max(0, gs["hp"] - dmg2)
 
         print(DIVIDER)
@@ -376,16 +400,18 @@ def do_combat(gs, enemy):
 
     heal = random.randint(6, 18)
     gs["hp"] = min(gs["max_hp"], gs["hp"] + heal)
-    print(f"\n  You rest briefly.  Restored {heal} HP."
-          f"  (HP: {gs['hp']}/{gs['max_hp']})")
+    print(f"\n  You rest briefly.  Restored {heal} HP.  (HP: {gs['hp']}/{gs['max_hp']})")
     print()
     pause()
     return "win"
 
+
 # ── progression ───────────────────────────────────────────────────────────────
+
 
 def xp_needed(level):
     return level * 80
+
 
 def add_xp(gs, amount):
     gs["xp"] += amount
@@ -399,19 +425,21 @@ def add_xp(gs, amount):
         leveled = True
     return leveled
 
+
 # floor → list of possible enemies to pick from
 FLOORS = [
-    [ENEMY_TEMPLATES[0]],                           # 1 — Goblin
-    [ENEMY_TEMPLATES[0], ENEMY_TEMPLATES[1]],       # 2 — Goblin / Skeleton
-    [ENEMY_TEMPLATES[1], ENEMY_TEMPLATES[2]],       # 3 — Skeleton / Orc
-    [ENEMY_TEMPLATES[2], ENEMY_TEMPLATES[3]],       # 4 — Orc / Dark Knight
-    [ENEMY_TEMPLATES[4]],                           # 5 — Dragon BOSS
+    [ENEMY_TEMPLATES[0]],  # 1 — Goblin
+    [ENEMY_TEMPLATES[0], ENEMY_TEMPLATES[1]],  # 2 — Goblin / Skeleton
+    [ENEMY_TEMPLATES[1], ENEMY_TEMPLATES[2]],  # 3 — Skeleton / Orc
+    [ENEMY_TEMPLATES[2], ENEMY_TEMPLATES[3]],  # 4 — Orc / Dark Knight
+    [ENEMY_TEMPLATES[4]],  # 5 — Dragon BOSS
 ]
+
 
 def run_dungeon(gs):
     for floor_num, pool in enumerate(FLOORS, start=1):
         gs["floor"] = floor_num
-        is_boss = (floor_num == len(FLOORS))
+        is_boss = floor_num == len(FLOORS)
 
         clear()
         print()
@@ -428,8 +456,8 @@ def run_dungeon(gs):
         pause()
 
         template = random.choice(pool)
-        enemy    = spawn_enemy(template, floor_num)
-        result   = do_combat(gs, enemy)
+        enemy = spawn_enemy(template, floor_num)
+        result = do_combat(gs, enemy)
 
         if result == "dead":
             screen_death(gs)
@@ -438,7 +466,9 @@ def run_dungeon(gs):
     screen_victory(gs)
     return True
 
+
 # ── screens ───────────────────────────────────────────────────────────────────
+
 
 def screen_title():
     clear()
@@ -451,11 +481,13 @@ def screen_title():
     print()
     pause("  [ Press ENTER to begin ] ")
 
+
 def screen_name():
     clear()
     print("\n  What is your name, adventurer?\n")
     name = input("  > ").strip()
     return name if name else "Stranger"
+
 
 def screen_class():
     while True:
@@ -478,6 +510,7 @@ def screen_class():
             pause()
             return cls
 
+
 def screen_death(gs):
     clear()
     print(r"""
@@ -489,13 +522,15 @@ def screen_death(gs):
   ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═════╝
     """)
     print(f"  {gs['name']} the {gs['cls']['name']} fell in the dungeon...")
-    print(f"  Floor reached: {gs['floor']}  │  Enemies slain: {gs['kills']}"
-          f"  │  Level: {gs['level']}")
+    print(
+        f"  Floor reached: {gs['floor']}  │  Enemies slain: {gs['kills']}  │  Level: {gs['level']}"
+    )
     if gs["loot"]:
         print(f"  Loot collected: {', '.join(gs['loot'])}")
     print()
     print("  The dungeon claims another soul.")
     print()
+
 
 def screen_victory(gs):
     clear()
@@ -512,24 +547,27 @@ def screen_victory(gs):
     print("  A legend is born.")
     print()
 
+
 # ── entry point ───────────────────────────────────────────────────────────────
+
 
 def new_game():
     screen_title()
     name = screen_name()
-    cls  = screen_class()
+    cls = screen_class()
     gs = {
-        "name":    name,
-        "cls":     cls,
-        "hp":      cls["hp"],
-        "max_hp":  cls["hp"],
-        "xp":      0,
-        "level":   1,
-        "floor":   1,
-        "kills":   0,
-        "loot":    [],
+        "name": name,
+        "cls": cls,
+        "hp": cls["hp"],
+        "max_hp": cls["hp"],
+        "xp": 0,
+        "level": 1,
+        "floor": 1,
+        "kills": 0,
+        "loot": [],
     }
     return gs
+
 
 def main():
     while True:
@@ -540,6 +578,7 @@ def main():
         if again != "y":
             print("\n  May your blade stay sharp. Farewell.\n")
             break
+
 
 if __name__ == "__main__":
     try:
