@@ -15,11 +15,10 @@ from textual.app import App, ComposeResult
 from textual.widgets import RichLog, Static
 
 from dungeon_clash import service
-from dungeon_clash.active import ensure_enemy, play_turn
 from dungeon_clash.adapters.persist import Store
 from dungeon_clash.adapters.render import combat_view, render_event
 from dungeon_clash.core import CombatAction, Zone
-from dungeon_clash.passive import LogEntry, PassiveSession
+from dungeon_clash.run.session import LogEntry, RunSession, advance_to_fight, play_turn
 
 _KEY_TO_ZONE = {"h": Zone.HEAD, "t": Zone.TORSO, "l": Zone.LEGS}
 
@@ -33,7 +32,7 @@ class PlayApp(App[None]):
     #prompt { height: auto; padding: 1; }
     """
 
-    def __init__(self, store: Store, session: PassiveSession) -> None:
+    def __init__(self, store: Store, session: RunSession) -> None:
         super().__init__()
         self._store = store
         self.session = session
@@ -47,7 +46,7 @@ class PlayApp(App[None]):
         yield Static(id="prompt")
 
     def on_mount(self) -> None:
-        self.session, entries = ensure_enemy(self.session, self._pool)
+        self.session, entries = advance_to_fight(self.session, pool=self._pool)
         service.persist_turn(self._store, self.session, entries, now=time.time())
         self._write(entries)
         self._refresh()
@@ -71,8 +70,8 @@ class PlayApp(App[None]):
         self._pending = None
         self._phase = "attack"
 
-        self.session, entries = play_turn(self.session, action, self._pool)
-        self.session, extra = ensure_enemy(self.session, self._pool)  # keep a foe on screen
+        self.session, entries = play_turn(self.session, action, pool=self._pool)
+        self.session, extra = advance_to_fight(self.session, pool=self._pool)  # next foe on screen
         entries.extend(extra)
         service.persist_turn(self._store, self.session, entries, now=time.time())
         self._write(entries)
@@ -84,7 +83,11 @@ class PlayApp(App[None]):
             log.write(render_event(entry.event))
 
     def _refresh(self) -> None:
-        self.query_one("#view", Static).update(combat_view(self.session.hero, self.session.enemy))
+        if self.session.fight is not None:
+            view = combat_view(self.session.fight.hero, self.session.fight.enemy)
+        else:
+            view = combat_view(self.session.hero, None)
+        self.query_one("#view", Static).update(view)
         if self._phase == "attack":
             prompt = "choose ATTACK zone"
         else:

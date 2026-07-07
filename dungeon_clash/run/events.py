@@ -7,11 +7,23 @@ from typing import Literal
 from dungeon_clash.core.events import Event
 
 
+class RunStarted(Event):
+    kind: Literal["run_started"] = "run_started"
+    run_number: int
+    floor: int
+
+
 class RoomEntered(Event):
     kind: Literal["room_entered"] = "room_entered"
     floor: int
     index: int
     room_type: str
+
+
+class EncounterStarted(Event):
+    kind: Literal["encounter_started"] = "encounter_started"
+    name: str
+    hp: int
 
 
 class RestTaken(Event):

@@ -145,12 +145,16 @@ class Store:
 
         return {
             "turns": scalar("SELECT COALESCE(MAX(tick), -1) + 1 FROM event_log"),
-            "enemies_seen": scalar("SELECT COUNT(*) FROM event_log WHERE kind = 'enemy_appeared'"),
+            "enemies_seen": scalar(
+                "SELECT COUNT(*) FROM event_log WHERE kind = 'encounter_started'"
+            ),
             "kills": scalar(
                 "SELECT COUNT(*) FROM event_log WHERE kind = 'combat_defeated' AND actor = ?",
                 hero_name,
             ),
-            "deaths": scalar("SELECT COUNT(*) FROM event_log WHERE kind = 'hero_down'"),
+            "deaths": scalar(
+                "SELECT COUNT(*) FROM event_log WHERE kind = 'run_ended' AND actor = 'died'"
+            ),
             "damage_dealt": scalar(
                 "SELECT SUM(damage) FROM event_log WHERE kind = 'attack_resolved' AND actor = ?",
                 hero_name,

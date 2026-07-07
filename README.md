@@ -24,9 +24,10 @@ dungeon_clash/
   core/       # deterministic engine: rng, zones, models, events, combat
   content/    # game data as validated TOML (enemies, …)
   strategy/   # strategy-as-code: intents, runner, sandbox, reference bots
-  passive/    # autonomous lazy-catch-up simulation (no daemon)
-  active/     # manual player-driven turns (shares the same core + bookkeeping)
-  run/        # floors, rooms, resources, stress effects, push-your-luck
+  run/        # floors, rooms, resources, stress, push-your-luck; RunSession
+              #   (the resumable session the CLI/TUI run on)
+  passive/    # superseded standalone enemy-loop model (kept for reference)
+  active/     # superseded standalone manual-turn model (kept for reference)
   adapters/   # persist (SQLite) + render (Rich); rlenv comes in a later phase
   service.py  # application service wiring passive/active ↔ storage ↔ clock
   cli/        # the `dungeon` CLI (Typer + Rich) and the Textual play app
@@ -55,8 +56,10 @@ uv run dungeon log --last 10                         # recent combat log
 uv run dungeon log --stats                           # aggregate statistics
 ```
 
-In `dungeon play` you pick an attack zone then a defend zone (H/T/L) each turn;
-`Q` hands control back to your strategy at the exact state you left.
+`status` shows the current floor/room, hero HP and stress, carried and banked
+resources, and the foe in front of you. In `dungeon play` you pick an attack
+zone then a defend zone (H/T/L) each turn; `Q` hands control back to your
+strategy at the exact state you left.
 
 Passive mode never runs in the background: `status` deterministically simulates
 whatever happened since you last looked and appends it to the log. Nothing is

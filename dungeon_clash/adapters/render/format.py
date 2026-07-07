@@ -96,8 +96,14 @@ def render_log_line(kind: str, payload: dict[str, object]) -> Text:
         return Text(f"INVALID ACTION: {payload['reason']} — turn skipped", style="red")
     if kind == "fled":
         return Text(f"{payload['who']} flees", style="italic")
+    if kind == "run_started":
+        return Text(
+            f"═══ run #{payload['run_number']} begins (floor {payload['floor']}) ═══", style="bold"
+        )
     if kind == "room_entered":
-        return Text(f"— floor {payload['floor']} · {payload['room_type']} room", style="dim")
+        return Text(f"— floor {payload['floor']}: {payload['room_type']} room", style="dim")
+    if kind == "encounter_started":
+        return Text(f"a {payload['name']} blocks the way ({payload['hp']} HP)", style="cyan")
     if kind == "rest_taken":
         return Text(
             f"rest: stress {payload['stress_before']}→{payload['stress_after']} "

@@ -26,11 +26,11 @@ def test_session_save_is_upsert() -> None:
 
 def _sample_rows() -> list[LogRow]:
     return [
-        LogRow(0, "enemy_appeared", "Orc", None, "{}"),
+        LogRow(0, "encounter_started", "Orc", None, "{}"),
         LogRow(0, "attack_resolved", "Hero", 10, "{}"),
         LogRow(0, "attack_resolved", "Orc", 5, "{}"),
         LogRow(1, "combat_defeated", "Hero", None, "{}"),
-        LogRow(1, "hero_down", None, None, "{}"),
+        LogRow(1, "run_ended", "died", None, "{}"),
     ]
 
 
@@ -40,10 +40,10 @@ def test_log_append_read_and_ordering() -> None:
         assert store.count_log() == 5
 
         last2 = store.read_log(last=2)
-        assert [r["kind"] for r in last2] == ["combat_defeated", "hero_down"]
+        assert [r["kind"] for r in last2] == ["combat_defeated", "run_ended"]
 
         allrows = store.read_log()
-        assert next(r["kind"] for r in allrows) == "enemy_appeared"
+        assert next(r["kind"] for r in allrows) == "encounter_started"
 
 
 def test_stats_are_computed_in_sql() -> None:

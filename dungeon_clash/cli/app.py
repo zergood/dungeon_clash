@@ -1,11 +1,15 @@
-"""The ``dungeon`` command-line interface (Phase 3).
+"""The ``dungeon`` command-line interface.
 
-    dungeon start [--seed S] [--strategy NAME]   # begin a passive run
+    dungeon start [--seed S] [--strategy NAME]   # begin a fresh run
     dungeon status                               # catch up to now, show state
-    dungeon log [--last N] [--stats]             # read the combat log
+    dungeon play                                 # take manual control (TUI)
+    dungeon log [--last N] [--stats]             # read the run log
 
-Passive mode never runs in the background: ``status`` lazily simulates whatever
-happened since you last looked and appends it to the log (GDD §4.3).
+Runs traverse floors of rooms, accrue stress and resources, and push their luck
+at each floor exit (GDD §6–§15). Passive mode never runs in the background:
+``status`` lazily simulates whatever happened since you last looked and appends
+it to the log (GDD §4.3); on death or extraction a fresh run starts automatically
+and secured resources are banked.
 """
 
 from __future__ import annotations
@@ -23,7 +27,9 @@ from rich.text import Text
 from dungeon_clash import service
 from dungeon_clash.adapters.persist import Store
 from dungeon_clash.adapters.render import render_log_line
-from dungeon_clash.passive import STRATEGIES, PassiveSession
+from dungeon_clash.core.stress import stress_state
+from dungeon_clash.passive import STRATEGIES
+from dungeon_clash.run.session import RunSession
 
 cli = typer.Typer(add_completion=False, help="Dungeon Clash — a terminal dungeon crawler.")
 console = Console()
@@ -38,18 +44,25 @@ def _print_log_row(row: object) -> None:
     console.print(Text.assemble((f"t{row['tick']:>4}  ", "dim"), detail))  # type: ignore[index]
 
 
-def _render_status(session: PassiveSession) -> None:
-    enemy = (
-        f"{session.enemy.name} ({session.enemy.hp}/{session.enemy.max_hp} HP)"
-        if session.enemy is not None
-        else "— (between fights)"
-    )
+def _render_status(session: RunSession) -> None:
+    if session.fight is not None:
+        foe = session.fight.enemy
+        facing = f"{foe.name} ({foe.hp}/{foe.max_hp} HP)"
+        hero = session.fight.hero
+    else:
+        facing = "— (between rooms)"
+        hero = session.hero
+    res = session.resources
     body = (
-        f"[bold]{session.hero.name}[/]  {session.hero.hp}/{session.hero.max_hp} HP\n"
+        f"[bold]{hero.name}[/]  {hero.hp}/{hero.max_hp} HP    "
+        f"stress {session.stress} ([magenta]{stress_state(session.stress).value}[/])\n"
         f"strategy : {session.strategy_name}\n"
-        f"turn     : {session.tick}\n"
+        f"floor    : {session.floor}   room {session.room_index}/{len(session.floor_rooms)}"
+        f"   (run #{session.runs_completed + 1}, turn {session.tick})\n"
+        f"carried  : {res.gold}g  {res.materials}mat   banked: {session.banked.gold}g "
+        f"{session.banked.materials}mat\n"
         f"kills    : {session.kills}    deaths: {session.deaths}\n"
-        f"facing   : {enemy}"
+        f"facing   : {facing}"
     )
     console.print(Panel(body, title="Dungeon Clash — status", expand=False))
 
@@ -116,7 +129,7 @@ def log(
             raise typer.Exit(code=1)
 
         if stats:
-            session = PassiveSession.model_validate_json(row["snapshot"])
+            session = RunSession.model_validate_json(row["snapshot"])
             s = store.stats(session.hero.name)
             table = Table(title="Statistics", show_header=False)
             table.add_row("turns simulated", str(s["turns"]))
